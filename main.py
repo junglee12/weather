@@ -118,6 +118,52 @@ def main_streamlit():
 
     st.subheader("Location")
 
+    # --- TEMPORARY JAVASCRIPT GEOLOCATION FOR DEBUGGING ---
+    st.subheader("Test Direct Browser Geolocation")
+    html_string = """
+    <button onclick="getLocation()">Test Browser Get Location</button>
+    <p id="js_location"></p>
+    <script>
+    function getLocation() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(showPosition, showError);
+      } else {
+        document.getElementById("js_location").innerHTML = "Geolocation is not supported by this browser.";
+      }
+    }
+
+    function showPosition(position) {
+      document.getElementById("js_location").innerHTML =
+        "JS Latitude: " + position.coords.latitude +
+        "<br>JS Longitude: " + position.coords.longitude;
+    }
+
+    function showError(error) {
+      let errorMessage = "Error getting location via JavaScript: ";
+      switch(error.code) {
+        case error.PERMISSION_DENIED:
+          errorMessage += "User denied the request for Geolocation.";
+          break;
+        case error.POSITION_UNAVAILABLE:
+          errorMessage += "Location information is unavailable.";
+          break;
+        case error.TIMEOUT:
+          errorMessage += "The request to get user location timed out.";
+          break;
+        case error.UNKNOWN_ERROR:
+          errorMessage += "An unknown error occurred.";
+          break;
+      }
+      // Use alert to make the error very visible
+      alert(errorMessage + "\nDetails: " + error.message);
+      document.getElementById("js_location").innerHTML = errorMessage + "<br>Details: " + error.message;
+    }
+    </script>
+    """
+    st.components.v1.html(html_string, height=100) # Adjust height as needed
+    # --- END TEMPORARY JAVASCRIPT GEOLOCATION ---
+
+
     # Initialize session state
     if 'latitude' not in st.session_state:
         st.session_state.latitude = 39.8283  # Default: Approximate center of US
