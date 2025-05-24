@@ -121,8 +121,6 @@ def main_streamlit():
     # --- TEMPORARY JAVASCRIPT GEOLOCATION FOR DEBUGGING ---
     st.subheader("Test Direct Browser Geolocation")
     html_string = """
-    <button onclick="getLocation()">Test Browser Get Location</button>
-    <p id="js_location"></p>
     <script>
     function getLocation() {
       if (navigator.geolocation) {
@@ -154,11 +152,12 @@ def main_streamlit():
           errorMessage += "An unknown error occurred.";
           break;
       }
-      // Use alert to make the error very visible
-      alert(errorMessage + "\nDetails: " + error.message);
+      alert(errorMessage + "\nDetails: " + error.message); // Keep alert for visibility
       document.getElementById("js_location").innerHTML = errorMessage + "<br>Details: " + error.message;
     }
     </script>
+    <button onclick="getLocation()">Test Browser Get Location</button>
+    <p id="js_location"></p>
     """
     st.components.v1.html(html_string, height=100) # Adjust height as needed
     # --- END TEMPORARY JAVASCRIPT GEOLOCATION ---
