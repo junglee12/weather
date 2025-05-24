@@ -162,7 +162,7 @@ def main_streamlit():
             st.session_state.location_message = "Auto-detection returned no usable data or unexpected format. Please enter coordinates manually."
             st.session_state.location_source = "error_auto_nodata" 
         
-        st.experimental_rerun()
+        st.rerun()
 
 
     # Display location message based on session state
