@@ -4,7 +4,60 @@
 
 import streamlit as st
 import requests # For IP-based geolocation
+from streamlit_geolocation import streamlit_geolocation
+import geocoder
 from weather import get_weather_data
+
+# --- Enhanced Geolocation Function ---
+def get_enhanced_location():
+    '''Attempts to get location using browser, then geocoder, then ip-api.'''
+    location_data = None
+    source = None
+
+    # 1. Try Streamlit Geolocation (Browser API)
+    try:
+        s_geo_data = streamlit_geolocation() # Default component key
+        if s_geo_data and "latitude" in s_geo_data and "longitude" in s_geo_data:
+            return {
+                "latitude": s_geo_data["latitude"],
+                "longitude": s_geo_data["longitude"],
+                "city": "N/A (Browser Geolocation)", # Browser geo usually doesn't provide city
+                "source": "browser"
+            }
+    except Exception as e: # Catch any error from streamlit_geolocation
+        st.warning("Browser geolocation failed or permission denied. Trying IP-based lookup...")
+
+
+    # 2. Try Geocoder (ip('me'))
+    try:
+        g = geocoder.ip('me')
+        if g.ok and g.latlng:
+            return {
+                "latitude": g.latlng[0],
+                "longitude": g.latlng[1],
+                "city": g.city or "N/A (Geocoder)",
+                "source": "geocoder_ip"
+            }
+        elif not g.ok:
+             st.warning(f"Primary IP lookup (Geocoder) failed. Reason: {g.status_code if hasattr(g, 'status_code') else 'Unknown'}. Trying alternative IP lookup...")
+    except Exception as e:
+        st.warning(f"Primary IP lookup (Geocoder) attempt failed: {e}. Trying alternative IP lookup...")
+
+    # 3. Fallback to existing IP-based geolocation (ip-api.com)
+    # This is the original get_location_from_ip function
+    # We call it directly here or you can refactor it to be callable as part of this sequence
+    st.info("Falling back to ip-api.com for geolocation.")
+    ip_api_location = get_location_from_ip() # Assumes get_location_from_ip() is defined in this file
+    if "error" not in ip_api_location and "latitude" in ip_api_location :
+        return {
+            "latitude": ip_api_location["latitude"],
+            "longitude": ip_api_location["longitude"],
+            "city": ip_api_location.get("city", "N/A (ip-api.com)"),
+            "source": "ip_api_com"
+        }
+    else: # Error from get_location_from_ip or no lat/lon
+        error_message = ip_api_location.get("error", "All geolocation attempts failed.")
+        return {"error": error_message, "source": "all_failed"}
 
 # --- IP Geolocation Function ---
 def get_location_from_ip():
@@ -51,34 +104,49 @@ def main_streamlit():
     if 'location_source' not in st.session_state:
         st.session_state.location_source = "default"
 
-    # IP-based Geolocation Button
-    if st.button("Auto-detect Location (IP-based)"):
-        with st.spinner("Attempting IP-based geolocation..."):
-            location_data = get_location_from_ip()
-        
+    # Auto-detect Location Button - MODIFIED
+    if st.button("Auto-detect Location"): # Changed button text
+        with st.spinner("Attempting to auto-detect your location..."):
+            location_data = get_enhanced_location() # Call the new function
+
         if "error" in location_data:
-            st.session_state.location_message = f"IP Geolocation Error: {location_data['error']}. Please enter coordinates manually."
-            st.session_state.location_source = "error"
-        elif location_data.get("latitude") is not None:
+            st.session_state.location_message = f"Auto-detection Error: {location_data['error']}. Please enter coordinates manually."
+            st.session_state.location_source = "error_auto" # New source for error from new function
+        elif location_data and "latitude" in location_data:
             st.session_state.latitude = location_data["latitude"]
             st.session_state.longitude = location_data["longitude"]
             city = location_data.get('city', 'your area')
-            st.session_state.location_message = f"Location approximated via IP to {city} ({st.session_state.latitude:.4f}, {st.session_state.longitude:.4f}). For higher accuracy, please enter manually."
-            st.session_state.location_source = "ip_auto"
-        # We need to trigger a rerun for the message and input fields to update immediately
+            source_msg_map = {
+                "browser": "via browser API",
+                "geocoder_ip": "approximated via IP (geocoder)",
+                "ip_api_com": "approximated via IP (ip-api.com)"
+            }
+            source_friendly_name = source_msg_map.get(location_data.get("source"), "automatically")
+
+            st.session_state.location_message = f"Location found {source_friendly_name} as {city} ({st.session_state.latitude:.4f}, {st.session_state.longitude:.4f}). For higher accuracy, please enter manually if needed."
+            st.session_state.location_source = location_data.get("source", "auto_success") # Use the source from location_data
+        else: # Should not happen if get_enhanced_location is structured correctly with an error key
+            st.session_state.location_message = "Auto-detection returned no usable data. Please enter coordinates manually."
+            st.session_state.location_source = "error_auto_nodata"
+        
         st.experimental_rerun()
 
 
-    # Display location message based on session state (success, error, info)
+    # Display location message based on session state
     if st.session_state.location_message:
-        if st.session_state.location_source == "ip_auto" or "Successfully" in st.session_state.location_message : # Treat ip_auto as a success type message
-            st.success(st.session_state.location_message)
-        elif st.session_state.location_source == "error" or "Error" in st.session_state.location_message:
-            st.warning(st.session_state.location_message)
-        elif st.session_state.location_source == "manual_update":
-             st.info(st.session_state.location_message)
-        elif st.session_state.location_source == "default": # Initial default message
-            st.info(st.session_state.location_message)
+        source = st.session_state.location_source
+        message = st.session_state.location_message
+        
+        if source in ["browser", "geocoder_ip", "ip_api_com", "auto_success", "ip_auto"]: # ip_auto kept for backward compatibility if needed
+            st.success(message)
+        elif source in ["error", "error_auto", "error_auto_nodata", "all_failed"]:
+            st.warning(message)
+        elif source == "manual_update":
+             st.info(message)
+        elif source == "default": # Initial default message
+            st.info(message)
+        else: # Catch-all for any other message types, can be styled as info or warning
+            st.info(message)
 
 
     # Manual Coordinate Input
