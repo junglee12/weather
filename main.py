@@ -121,45 +121,79 @@ def main_streamlit():
     # --- TEMPORARY JAVASCRIPT GEOLOCATION FOR DEBUGGING ---
     st.subheader("Test Direct Browser Geolocation")
     html_string = """
-    <script>
-    function getLocation() {
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(showPosition, showError);
-      } else {
-        document.getElementById("js_location").innerHTML = "Geolocation is not supported by this browser.";
-      }
-    }
+<button id="testGeoButton">Test Browser Get Location</button>
+<p id="js_location"></p>
+<script>
+// Function definitions first
+function getLocation() {
+  console.log("getLocation called");
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(showPosition, showError);
+  } else {
+    document.getElementById("js_location").innerHTML = "Geolocation is not supported by this browser.";
+  }
+}
 
-    function showPosition(position) {
-      document.getElementById("js_location").innerHTML =
-        "JS Latitude: " + position.coords.latitude +
-        "<br>JS Longitude: " + position.coords.longitude;
-    }
+function showPosition(position) {
+  console.log("showPosition called");
+  document.getElementById("js_location").innerHTML =
+    "JS Latitude: " + position.coords.latitude +
+    "<br>JS Longitude: " + position.coords.longitude;
+}
 
-    function showError(error) {
-      let errorMessage = "Error getting location via JavaScript: ";
-      switch(error.code) {
-        case error.PERMISSION_DENIED:
-          errorMessage += "User denied the request for Geolocation.";
-          break;
-        case error.POSITION_UNAVAILABLE:
-          errorMessage += "Location information is unavailable.";
-          break;
-        case error.TIMEOUT:
-          errorMessage += "The request to get user location timed out.";
-          break;
-        case error.UNKNOWN_ERROR:
-          errorMessage += "An unknown error occurred.";
-          break;
-      }
-      alert(errorMessage + "\nDetails: " + error.message); // Keep alert for visibility
-      document.getElementById("js_location").innerHTML = errorMessage + "<br>Details: " + error.message;
+function showError(error) {
+  console.log("showError called with code: " + error.code + ", message: " + error.message);
+  let errorMessage = "Error getting location via JavaScript: ";
+  switch(error.code) {
+    case error.PERMISSION_DENIED:
+      errorMessage += "User denied the request for Geolocation.";
+      break;
+    case error.POSITION_UNAVAILABLE:
+      errorMessage += "Location information is unavailable.";
+      break;
+    case error.TIMEOUT:
+      errorMessage += "The request to get user location timed out.";
+      break;
+    case error.UNKNOWN_ERROR:
+      errorMessage += "An unknown error occurred.";
+      break;
+  }
+  alert(errorMessage + "\nDetails: " + error.message);
+  document.getElementById("js_location").innerHTML = errorMessage + "<br>Details: " + error.message;
+}
+
+// Event listener attachment
+// This script block runs after the button and p elements are defined in the HTML string
+try {
+  var testButton = document.getElementById("testGeoButton");
+  if (testButton) {
+    testButton.addEventListener('click', getLocation);
+    console.log("Event listener attached to testGeoButton by direct script execution.");
+  } else {
+    console.error("Direct script: Could not find button with ID testGeoButton to attach listener.");
+  }
+} catch (e) {
+    console.error("Error attaching event listener directly: ", e);
+}
+
+// Fallback or primary method using DOMContentLoaded
+document.addEventListener('DOMContentLoaded', function() {
+    var testButtonDOMContentLoaded = document.getElementById("testGeoButton");
+    if (testButtonDOMContentLoaded) {
+        // Check if listener already attached by direct script to avoid double attachment
+        // This is tricky without a flag, for now, let's assume direct script might fail silently
+        // and DOMContentLoaded is a more robust way.
+        // To prevent double, we'd need to clear previous or use a flag.
+        // For simplicity in this component, let's assume one will work.
+        testButtonDOMContentLoaded.addEventListener('click', getLocation);
+        console.log("Event listener attached to testGeoButton via DOMContentLoaded.");
+    } else {
+        console.error("DOMContentLoaded: Could not find button with ID testGeoButton to attach listener.");
     }
-    </script>
-    <button onclick="getLocation()">Test Browser Get Location</button>
-    <p id="js_location"></p>
-    """
-    st.components.v1.html(html_string, height=100) # Adjust height as needed
+});
+</script>
+"""
+    st.components.v1.html(html_string, height=100)
     # --- END TEMPORARY JAVASCRIPT GEOLOCATION ---
 
 
